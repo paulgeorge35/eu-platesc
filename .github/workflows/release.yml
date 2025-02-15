@@ -1,0 +1,111 @@
+name: Publish to GitHub Packages
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-publish:
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ssh-key: ${{ secrets.DEPLOY_KEY }}
+          fetch-depth: 0
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@paulgeorge35'
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build
+        run: bun run build
+
+      - name: Lint
+        run: bun run lint
+          
+      - name: Determine version bump
+        id: version-bump
+        run: |
+          # Get all commit messages since the last tag
+          version=$(node -p -e "require('./package.json').version")
+          commits=$(git log "$version"..HEAD --pretty=%B)
+          # Log all commit messages for debugging
+          echo "Commit messages found:"
+          echo "$commits"
+          echo "-------------------"
+          
+          # Determine version type based on keywords
+          if echo "$commits" | grep -iq "BREAKING CHANGE"; then
+            echo "major" > version_type
+          elif echo "$commits" | grep -iq "feat"; then
+            echo "minor" > version_type
+          else
+            echo "patch" > version_type
+          fi
+          echo "Version bump determined: $(cat version_type)"
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+      - name: Bump version
+        id: bump-version
+        run: |
+          version_type=$(cat version_type)
+          # Use `npm version` to bump, but avoid creating a git tag
+          npm version $version_type --no-git-tag-version
+          
+          # Extract the version without the `v` prefix
+          version=$(node -p -e "require('./package.json').version")
+          
+          # Remove the `v` prefix, if it exists
+          version_without_v="${version#v}"
+          
+          # Commit and push changes
+          git add package.json
+          git commit -m "ci: bump version to $version_without_v [skip ci]"
+          
+          # Save the version without `v` as an environment variable
+          echo "VERSION=$version_without_v" >> $GITHUB_ENV
+
+      - name: Push updated files
+        run: |
+          git push origin main
+      
+      - name: Create and push tag
+        run: |
+          git tag -a "$VERSION" -m "Release $VERSION"
+          git push origin "$VERSION"
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.VERSION }}
+          name: ${{ env.VERSION }}
+          body: |
+            ## Changes in this release:
+            ${{ github.event.head_commit.message }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish to GitHub Packages
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
