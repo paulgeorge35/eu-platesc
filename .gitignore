@@ -3,3 +3,5 @@ lib
 
 .cursorrules
 .project
+.npmrc
+.initial-release.md
