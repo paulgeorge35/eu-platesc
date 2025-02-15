@@ -1,0 +1,27 @@
+{
+	"compilerOptions": {
+		"baseUrl": "./src/",
+		"rootDir": "src",
+		"downlevelIteration": true,
+		"lib": ["dom", "dom.iterable", "esnext"],
+		"module": "es6",
+		"target": "es6",
+		"esModuleInterop": true,
+		"jsx": "preserve",
+		"experimentalDecorators": true,
+		"moduleResolution": "node",
+		"forceConsistentCasingInFileNames": false,
+		"noUnusedParameters": true,
+		"noUnusedLocals": true,
+		"skipLibCheck": true,
+		"resolveJsonModule": true,
+		"strict": true,
+		"allowSyntheticDefaultImports": true,
+		"emitDecoratorMetadata": true,
+		"outDir": "./lib/esm",
+		"declaration": true,
+		"sourceMap": true
+	},
+	"exclude": ["lib", "node_modules"],
+	"include": ["src"]
+}

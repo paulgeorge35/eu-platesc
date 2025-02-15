@@ -1,0 +1,15 @@
+{
+  "extends": ["tslint:recommended"],
+  "rules": {
+    "no-implicit-dependencies": [
+      true,
+      ["node:crypto"]
+    ],
+    "quotemark": [true, "single"],
+    "member-access": [true, "no-public"],
+    "ordered-imports": true,
+    "no-console": false,
+    "object-literal-sort-keys": false,
+    "interface-name": false
+  }
+}

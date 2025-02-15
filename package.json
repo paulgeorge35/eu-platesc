@@ -1,0 +1,50 @@
+{
+  "name": "eu-platesc",
+  "version": "1.0.0",
+  "description": "Type-safe EuPlatesc payment gateway client",
+  "main": "./lib/index.js",
+  "module": "./lib/esm/index.js",
+  "types": "./lib/esm/index.d.ts",
+  "files": [
+    "lib",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "clean": "rimraf lib",
+    "build:esm": "tsc",
+    "build:cjs": "tsc -p tsconfig-require.json",
+    "build": "bun run clean && bun run build:esm && bun run build:cjs",
+    "lint": "tslint -c tslint.json src/**/*.ts",
+    "test": "bun test",
+    "prepublish": "bun run build"
+  },
+  "keywords": [
+    "euplatesc",
+    "eu-platesc",
+    "payments",
+    "typescript"
+  ],
+  "author": "",
+  "license": "MIT",
+  "peerDependencies": {
+    "node": ">=16.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "bun-types": "latest",
+    "rimraf": "^6.0.1",
+    "tslint": "^6.1.3",
+    "typescript": "^5.0.0"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/paulgeorge35/eu-platesc.git"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
