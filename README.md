@@ -35,7 +35,7 @@ First, create a GitHub Personal Access Token with the `read:packages` permission
 
 2. Install the package:
 ```bash
-bun add @paulgeorge35/euplatesc-client@latest
+bun add @paulgeorge35/eu-platesc@latest
 ```
 
 ### Via npm
@@ -47,7 +47,7 @@ bun add @paulgeorge35/euplatesc-client@latest
 
 2. Install the package:
 ```bash
-npm install @paulgeorge35/euplatesc-client@latest
+npm install @paulgeorge35/eu-platesc@latest
 ```
 
 ### Via yarn
@@ -59,7 +59,7 @@ npm install @paulgeorge35/euplatesc-client@latest
 
 2. Install the package:
 ```bash
-yarn add @paulgeorge35/euplatesc-client@latest
+yarn add @paulgeorge35/eu-platesc@latest
 ```
 
 ### Via pnpm
@@ -71,7 +71,7 @@ yarn add @paulgeorge35/euplatesc-client@latest
 
 2. Install the package:
 ```bash
-pnpm add @paulgeorge35/euplatesc-client@latest
+pnpm add @paulgeorge35/eu-platesc@latest
 ```
 
 ## Dependencies
@@ -85,7 +85,7 @@ pnpm add @paulgeorge35/euplatesc-client@latest
 ## Quick Start
 
 ```typescript
-import { EuPlatescClient } from 'euplatesc-client';
+import { EuPlatescClient } from '@paulgeorge35/eu-platesc';
 
 // Initialize the client
 const client = new EuPlatescClient({
