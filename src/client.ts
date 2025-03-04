@@ -57,6 +57,11 @@ export class EuPlatescClient {
       merch_id: this.config.merchantId,
       timestamp,
       nonce,
+      ...(request.generateEpid ? { generate_epid: '1' } : {}),
+      ...(request.valability ? { valability: request.valability } : {}),
+      ...(request.c2pId ? { c2p_id: request.c2pId } : {}),
+      ...(request.c2pCid ? { c2p_cid: request.c2pCid } : {}),
+      ...(request.lang ? { lang: request.lang } : {})
     };
 
     const fpHash = this.generateHash(data);

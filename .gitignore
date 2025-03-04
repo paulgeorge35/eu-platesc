@@ -5,3 +5,5 @@ lib
 .project
 .npmrc
 .initial-release.md
+
+.DS_Store

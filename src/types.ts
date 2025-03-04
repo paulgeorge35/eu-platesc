@@ -13,6 +13,11 @@ export interface PaymentRequest {
   shippingDetails?: ShippingDetails;
   extraData?: ExtraData;
   recurent?: RecurringConfig;
+  generateEpid?: boolean;
+  valability?: string; // YYYYMMDDHHmmSS format
+  c2pId?: string;
+  c2pCid?: string;
+  lang?: 'ro' | 'en' | 'fr' | 'de' | 'it' | 'es' | 'hu';
 }
 
 export interface BillingDetails {
