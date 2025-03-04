@@ -91,7 +91,6 @@ import { EuPlatescClient } from '@paulgeorge35/eu-platesc';
 const client = new EuPlatescClient({
   merchantId: 'YOUR_MERCHANT_ID',
   secretKey: 'YOUR_SECRET_KEY',
-  testMode: true // Set to false for production
 });
 
 // Create a payment
@@ -127,7 +126,6 @@ For advanced operations like refunds, status checks, etc., initialize the client
 const client = new EuPlatescClient({
   merchantId: 'YOUR_MERCHANT_ID',
   secretKey: 'YOUR_SECRET_KEY',
-  testMode: true
 }, {
   userKey: 'YOUR_USER_KEY',
   uapiKey: 'YOUR_UAPI_KEY'
@@ -206,7 +204,6 @@ const totals = await client.getCapturedTotals({
 #### `EuPlatescConfig`
 - `merchantId`: Your EuPlatesc merchant ID
 - `secretKey`: Your EuPlatesc secret key
-- `testMode`: Boolean to toggle test/production mode
 
 #### `WebServiceConfig`
 - `userKey`: Your web service user key

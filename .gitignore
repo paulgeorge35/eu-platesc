@@ -7,3 +7,5 @@ lib
 .initial-release.md
 
 .DS_Store
+
+test.ts

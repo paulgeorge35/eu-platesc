@@ -21,7 +21,6 @@ export class EuPlatescClient {
    * const client = new EuPlatescClient({
    *   merchantId: 'YOUR_MERCHANT_ID',
    *   secretKey: 'YOUR_SECRET_KEY',
-   *   testMode: true
    * }, {
    *   userKey: 'YOUR_USER_KEY',
    *   uapiKey: 'YOUR_UAPI_KEY'
@@ -33,9 +32,7 @@ export class EuPlatescClient {
     wsConfig?: WebServiceConfig
   ) {
     this.config = config;
-    this.endpoint = config.testMode
-      ? 'https://secure.euplatesc.ro/tdsprocess/tranzactd.php'
-      : 'https://secure.euplatesc.ro/tdsprocess/tranzactd.php';
+    this.endpoint = 'https://secure.euplatesc.ro/tdsprocess/tranzactd.php';
     this.wsConfig = wsConfig;
   }
 
@@ -50,7 +47,9 @@ export class EuPlatescClient {
     const nonce = this.generateNonce();
 
     const data = {
-      ...(request.recurent?.baseEPID ? { baseEPID: request.recurent.baseEPID } : {}),
+      ...(request.recurent?.baseEPID
+        ? { baseEPID: request.recurent.baseEPID }
+        : {}),
       amount: request.amount.toFixed(2),
       curr: request.currency,
       invoice_id: request.invoiceId,
@@ -58,36 +57,52 @@ export class EuPlatescClient {
       merch_id: this.config.merchantId,
       timestamp,
       nonce,
-      ...(request.generateEpid ? { generate_epid: '1' } : {}),
+      // ...(request.generateEpid ? { generate_epid: '1' } : {}),
+      ...(request.recurent?.frequency
+        ? { recurent_freq: request.recurent.frequency.toString() }
+        : {}),
+      ...(request.recurent?.expiry
+        ? { recurent_exp: request.recurent.expiry }
+        : {}),
       ...(request.valability ? { valability: request.valability } : {}),
       ...(request.c2pId ? { c2p_id: request.c2pId } : {}),
       ...(request.c2pCid ? { c2p_cid: request.c2pCid } : {}),
       ...(request.lang ? { lang: request.lang } : {}),
-      ...(request.recurent?.expiry ? { recurent_exp: request.recurent.expiry } : {}),
-      ...(request.recurent?.frequency ? { recurent_freq: request.recurent.frequency.toString() } : {}),
     };
 
     const fpHash = this.generateHash(data);
 
-    const queryParams = new URLSearchParams();
-
-    // Add base data
-    for (const [key, value] of Object.entries({
+    const allData = {
       ...data,
       fp_hash: fpHash,
       ...(request.recurent?.type ? { recurent: request.recurent.type } : {}),
+      ...(request.generateEpid ? { generate_epid: '1' } : {}),
       ...this.formatBillingDetails(request.billingDetails),
       ...this.formatShippingDetails(request.shippingDetails),
       ...this.formatExtraData(request.extraData),
-    })) {
+    };
+
+    const queryParams = new URLSearchParams();
+    for (const [key, value] of Object.entries(allData)) {
       if (value !== undefined) {
-        queryParams.append(key, value);
+        queryParams.append(key, String(value));
       }
     }
 
-    return {
-      redirectUrl: `${this.endpoint}?${queryParams.toString()}`
-    };
+    if (!request.generateEpid) {
+      return {
+        redirectUrl: `${this.endpoint}?${queryParams.toString()}`,
+      };
+    }
+
+    return await fetch(`${this.endpoint}?${queryParams.toString()}`)
+      .then((res) => res.json())
+      .then((responseData) => {
+        return {
+          redirectUrl: responseData.short_url,
+          epid: responseData.cart_id,
+        }
+      });
   }
 
   /**
@@ -105,7 +120,7 @@ export class EuPlatescClient {
       approval,
       timestamp,
       nonce,
-      fp_hash
+      fp_hash,
     } = responseData;
 
     const calculatedHash = this.generateHash({
@@ -118,7 +133,7 @@ export class EuPlatescClient {
       message,
       approval,
       timestamp,
-      nonce
+      nonce,
     });
 
     if (calculatedHash !== fp_hash) {
@@ -135,14 +150,12 @@ export class EuPlatescClient {
       approval,
       timestamp,
       nonce,
-      fpHash: fp_hash
+      fpHash: fp_hash,
     };
   }
 
   private generateTimestamp(): string {
-    return new Date().toISOString()
-      .replace(/[-T:]/g, '')
-      .slice(0, 14);
+    return new Date().toISOString().replace(/[-T:]/g, '').slice(0, 14);
   }
 
   private generateNonce(): string {
@@ -153,9 +166,7 @@ export class EuPlatescClient {
     let hmacInput = '';
 
     for (const value of Object.values(data)) {
-      hmacInput += value.length > 0
-        ? value.length + value
-        : '-';
+      hmacInput += value.length > 0 ? value.length + value : '-';
     }
 
     const hmac = createHmac('md5', Buffer.from(this.config.secretKey, 'hex'));
@@ -175,7 +186,7 @@ export class EuPlatescClient {
       zip: details.zipCode,
       country: details.country,
       phone: details.phone,
-      email: details.email
+      email: details.email,
     };
   }
 
@@ -192,7 +203,7 @@ export class EuPlatescClient {
       szip: details.zipCode,
       scountry: details.country,
       sphone: details.phone,
-      semail: details.email
+      semail: details.email,
     };
   }
 
@@ -202,17 +213,23 @@ export class EuPlatescClient {
     const formattedData: Record<string, string> = {};
 
     if (data.silentUrl) formattedData['ExtraData[silenturl]'] = data.silentUrl;
-    if (data.silentUrlSec) formattedData['ExtraData[silenturlsec]'] = data.silentUrlSec;
-    if (data.successUrl) formattedData['ExtraData[successurl]'] = data.successUrl;
+    if (data.silentUrlSec)
+      formattedData['ExtraData[silenturlsec]'] = data.silentUrlSec;
+    if (data.successUrl)
+      formattedData['ExtraData[successurl]'] = data.successUrl;
     if (data.failedUrl) formattedData['ExtraData[failedurl]'] = data.failedUrl;
     if (data.epTarget) formattedData['ExtraData[ep_target]'] = data.epTarget;
     if (data.epMethod) formattedData['ExtraData[ep_method]'] = data.epMethod;
-    if (data.backToSite) formattedData['ExtraData[backtosite]'] = data.backToSite;
-    if (data.backToSiteMethod) formattedData['ExtraData[backtosite_method]'] = data.backToSiteMethod;
+    if (data.backToSite)
+      formattedData['ExtraData[backtosite]'] = data.backToSite;
+    if (data.backToSiteMethod)
+      formattedData['ExtraData[backtosite_method]'] = data.backToSiteMethod;
     if (data.expireUrl) formattedData['ExtraData[expireurl]'] = data.expireUrl;
     if (data.rate) formattedData['ExtraData[rate]'] = data.rate;
-    if (data.filtruRate) formattedData['ExtraData[filtru_rate]'] = data.filtruRate;
-    if (data.epChannel) formattedData['ExtraData[ep_channel]'] = data.epChannel.join(',');
+    if (data.filtruRate)
+      formattedData['ExtraData[filtru_rate]'] = data.filtruRate;
+    if (data.epChannel)
+      formattedData['ExtraData[ep_channel]'] = data.epChannel.join(',');
 
     return formattedData;
   }
@@ -223,11 +240,13 @@ export class EuPlatescClient {
    * @returns Promise resolving to transaction status(es)
    * @requires WebServiceConfig
    */
-  async checkStatus(request: CheckStatusRequest): Promise<WebServiceResponse<TransactionStatus[]>> {
+  async checkStatus(
+    request: CheckStatusRequest
+  ): Promise<WebServiceResponse<TransactionStatus[]>> {
     if (!this.wsConfig) {
       return {
         success: false,
-        message: 'WebService configuration required for this operation'
+        message: 'WebService configuration required for this operation',
       };
     }
 
@@ -240,13 +259,13 @@ export class EuPlatescClient {
       timestamp,
       nonce,
       ...(request.epid ? { epid: request.epid } : {}),
-      ...(request.invoiceId ? { invoice_id: request.invoiceId } : {})
+      ...(request.invoiceId ? { invoice_id: request.invoiceId } : {}),
     };
 
     const fpHash = this.generateHash(data);
     return this.makeWebServiceRequest<TransactionStatus[]>({
       ...data,
-      fp_hash: fpHash
+      fp_hash: fpHash,
     });
   }
 
@@ -256,11 +275,13 @@ export class EuPlatescClient {
    * @returns Promise resolving to the base EPID of the cancelled series
    * @requires WebServiceConfig
    */
-  async cancelRecurring(request: RecurringCancellationRequest): Promise<WebServiceResponse<string>> {
+  async cancelRecurring(
+    request: RecurringCancellationRequest
+  ): Promise<WebServiceResponse<string>> {
     if (!this.wsConfig) {
       return {
         success: false,
-        message: 'WebService configuration required for this operation'
+        message: 'WebService configuration required for this operation',
       };
     }
 
@@ -273,13 +294,13 @@ export class EuPlatescClient {
       epid: request.epid,
       reason: request.reason || '',
       timestamp,
-      nonce
+      nonce,
     };
 
     const fpHash = this.generateUapiHash(data);
     return this.makeWebServiceRequest<string>({
       ...data,
-      fp_hash: fpHash
+      fp_hash: fpHash,
     });
   }
 
@@ -293,7 +314,7 @@ export class EuPlatescClient {
     if (!this.wsConfig) {
       return {
         success: false,
-        message: 'WebService configuration required for this operation'
+        message: 'WebService configuration required for this operation',
       };
     }
 
@@ -307,18 +328,18 @@ export class EuPlatescClient {
       amount: request.amount.toFixed(2),
       reason: request.reason,
       timestamp,
-      nonce
+      nonce,
     };
 
     const fpHash = this.generateUapiHash(data);
     const response = await this.makeWebServiceRequest<{ success: string }>({
       ...data,
-      fp_hash: fpHash
+      fp_hash: fpHash,
     });
 
     return {
       ...response,
-      data: response.success && response.data?.success === '1'
+      data: response.success && response.data?.success === '1',
     };
   }
 
@@ -332,7 +353,7 @@ export class EuPlatescClient {
     if (!this.wsConfig) {
       return {
         success: false,
-        message: 'WebService configuration required for this operation'
+        message: 'WebService configuration required for this operation',
       };
     }
 
@@ -345,24 +366,26 @@ export class EuPlatescClient {
       epid: request.epid,
       ...(request.amount ? { amount: request.amount.toFixed(2) } : {}),
       timestamp,
-      nonce
+      nonce,
     };
 
     const fpHash = this.generateUapiHash(data);
     const response = await this.makeWebServiceRequest<{ success: string }>({
       ...data,
-      fp_hash: fpHash
+      fp_hash: fpHash,
     });
 
     return {
       ...response,
-      data: response.success && response.data?.success === '1'
+      data: response.success && response.data?.success === '1',
     };
   }
 
   private generateUapiHash(data: Record<string, string>): string {
     if (!this.wsConfig) {
-      throw new EuPlatescError('WebService configuration required for this operation');
+      throw new EuPlatescError(
+        'WebService configuration required for this operation'
+      );
     }
 
     let hmacInput = '';
@@ -374,29 +397,33 @@ export class EuPlatescClient {
     return hmac.update(hmacInput, 'utf8').digest('hex').toUpperCase();
   }
 
-  private async makeWebServiceRequest<T>(data: Record<string, string>): Promise<WebServiceResponse<T>> {
+  private async makeWebServiceRequest<T>(
+    data: Record<string, string>
+  ): Promise<WebServiceResponse<T>> {
     try {
       const response = await fetch(this.wsEndpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: new URLSearchParams(data).toString()
+        body: new URLSearchParams(data).toString(),
       });
 
       if (!response.ok) {
         return {
           success: false,
-          message: `HTTP error! status: ${response.status}`
+          message: `HTTP error! status: ${response.status}`,
         };
       }
 
-      const result = await response.json() as WebServiceSuccessResponse | WebServiceErrorResponse;
+      const result = (await response.json()) as
+        | WebServiceSuccessResponse
+        | WebServiceErrorResponse;
 
       if ('error' in result) {
         return {
           success: false,
-          message: result.error
+          message: result.error,
         };
       }
 
@@ -411,12 +438,13 @@ export class EuPlatescClient {
 
       return {
         success: true,
-        data: result.success as T
+        data: result.success as T,
       };
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : 'Unknown error occurred'
+        message:
+          error instanceof Error ? error.message : 'Unknown error occurred',
       };
     }
   }
@@ -430,7 +458,7 @@ export class EuPlatescClient {
     if (!this.wsConfig) {
       return {
         success: false,
-        message: 'WebService configuration required for this operation'
+        message: 'WebService configuration required for this operation',
       };
     }
 
@@ -441,13 +469,13 @@ export class EuPlatescClient {
       method: 'check_mid',
       mid: this.config.merchantId,
       timestamp,
-      nonce
+      nonce,
     };
 
     const fpHash = this.generateHash(data);
     return this.makeWebServiceRequest<MerchantInfo>({
       ...data,
-      fp_hash: fpHash
+      fp_hash: fpHash,
     });
   }
 
@@ -461,7 +489,7 @@ export class EuPlatescClient {
     if (!this.wsConfig) {
       return {
         success: false,
-        message: 'WebService configuration required for this operation'
+        message: 'WebService configuration required for this operation',
       };
     }
 
@@ -473,13 +501,13 @@ export class EuPlatescClient {
       ukey: this.wsConfig.userKey,
       ep_id: epid,
       timestamp,
-      nonce
+      nonce,
     };
 
     const fpHash = this.generateUapiHash(data);
     return this.makeWebServiceRequest<CardArtResponse>({
       ...data,
-      fp_hash: fpHash
+      fp_hash: fpHash,
     });
   }
 
@@ -489,11 +517,13 @@ export class EuPlatescClient {
    * @returns Promise resolving to list of saved cards
    * @requires WebServiceConfig
    */
-  async getSavedCards(c2pId: string): Promise<WebServiceResponse<SavedCardsResponse>> {
+  async getSavedCards(
+    c2pId: string
+  ): Promise<WebServiceResponse<SavedCardsResponse>> {
     if (!this.wsConfig) {
       return {
         success: false,
-        message: 'WebService configuration required for this operation'
+        message: 'WebService configuration required for this operation',
       };
     }
 
@@ -505,13 +535,13 @@ export class EuPlatescClient {
       mid: this.config.merchantId,
       c2p_id: c2pId,
       timestamp,
-      nonce
+      nonce,
     };
 
     const fpHash = this.generateHash(data);
     return this.makeWebServiceRequest<SavedCardsResponse>({
       ...data,
-      fp_hash: fpHash
+      fp_hash: fpHash,
     });
   }
 
@@ -529,7 +559,7 @@ export class EuPlatescClient {
     if (!this.wsConfig) {
       return {
         success: false,
-        message: 'WebService configuration required for this operation'
+        message: 'WebService configuration required for this operation',
       };
     }
 
@@ -543,13 +573,13 @@ export class EuPlatescClient {
       from: options.from || '',
       to: options.to || '',
       timestamp,
-      nonce
+      nonce,
     };
 
     const fpHash = this.generateUapiHash(data);
     return this.makeWebServiceRequest<CurrencyTotals>({
       ...data,
-      fp_hash: fpHash
+      fp_hash: fpHash,
     });
   }
 
@@ -566,7 +596,7 @@ export class EuPlatescClient {
     if (!this.wsConfig) {
       return {
         success: false,
-        message: 'WebService configuration required for this operation'
+        message: 'WebService configuration required for this operation',
       };
     }
 
@@ -580,13 +610,13 @@ export class EuPlatescClient {
       from: options.from || '',
       to: options.to || '',
       timestamp,
-      nonce
+      nonce,
     };
 
     const fpHash = this.generateUapiHash(data);
     return this.makeWebServiceRequest<Invoice[]>({
       ...data,
-      fp_hash: fpHash
+      fp_hash: fpHash,
     });
   }
 
@@ -602,7 +632,7 @@ export class EuPlatescClient {
     if (!this.wsConfig) {
       return {
         success: false,
-        message: 'WebService configuration required for this operation'
+        message: 'WebService configuration required for this operation',
       };
     }
 
@@ -614,13 +644,13 @@ export class EuPlatescClient {
       ukey: this.wsConfig.userKey,
       invoice: invoiceNumber,
       timestamp,
-      nonce
+      nonce,
     };
 
     const fpHash = this.generateUapiHash(data);
     return this.makeWebServiceRequest<InvoiceTransaction[]>({
       ...data,
-      fp_hash: fpHash
+      fp_hash: fpHash,
     });
   }
 }

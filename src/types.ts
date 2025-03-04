@@ -1,7 +1,6 @@
 export interface EuPlatescConfig {
   merchantId: string;
   secretKey: string;
-  testMode?: boolean;
 }
 
 export interface PaymentRequest {
