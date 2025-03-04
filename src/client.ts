@@ -50,6 +50,7 @@ export class EuPlatescClient {
     const nonce = this.generateNonce();
 
     const data = {
+      ...(request.recurent?.baseEPID ? { baseEPID: request.recurent.baseEPID } : {}),
       amount: request.amount.toFixed(2),
       curr: request.currency,
       invoice_id: request.invoiceId,
@@ -61,7 +62,9 @@ export class EuPlatescClient {
       ...(request.valability ? { valability: request.valability } : {}),
       ...(request.c2pId ? { c2p_id: request.c2pId } : {}),
       ...(request.c2pCid ? { c2p_cid: request.c2pCid } : {}),
-      ...(request.lang ? { lang: request.lang } : {})
+      ...(request.lang ? { lang: request.lang } : {}),
+      ...(request.recurent?.expiry ? { recurent_exp: request.recurent.expiry } : {}),
+      ...(request.recurent?.frequency ? { recurent_freq: request.recurent.frequency.toString() } : {}),
     };
 
     const fpHash = this.generateHash(data);
@@ -72,6 +75,7 @@ export class EuPlatescClient {
     for (const [key, value] of Object.entries({
       ...data,
       fp_hash: fpHash,
+      ...(request.recurent?.type ? { recurent: request.recurent.type } : {}),
       ...this.formatBillingDetails(request.billingDetails),
       ...this.formatShippingDetails(request.shippingDetails),
       ...this.formatExtraData(request.extraData),
